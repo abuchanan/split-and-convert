@@ -1,0 +1,10 @@
+This contains a few pieces:
+
+* kseq.h comes from http://lh3lh3.users.sourceforge.net/kseq.shtml
+  Thank you Heng Li!
+
+* main.c (compile to strip-and-convert) reads a FastQ file, strips off the first
+  10 bases of the sequence, and prints a FastA format to STDOUT.
+
+* run.py runs strip-and-convert using Python's multiprocess.Pool
+  Yay for multicore.
