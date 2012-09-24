@@ -38,3 +38,6 @@ if __name__ == '__main__':
             os.makedirs(dir_name)
 
         pool.apply_async(run_strip_and_convert, (file_path, output_path))
+
+    pool.close()
+    pool.join()
