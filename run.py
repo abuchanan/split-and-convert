@@ -16,6 +16,8 @@ log.setLevel(logging.INFO)
 parser = argparse.ArgumentParser()
 parser.add_argument('fastq', nargs='+')
 
+parser.add_argument('--dry-run', action='store_true')
+
 
 def grouper(n, iterable, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
@@ -54,14 +56,17 @@ if __name__ == '__main__':
         output_path = os.path.join(dir_path, 'stripped-and-converted', file_name)
         output_dir = os.path.dirname(output_path)
 
-        # ensure that the full path to the output file exists
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        if args.dry_run:
+            log.info('Dry-run completed: {0} > {1}'.format(input_path, output_path))
+        else:
+            # ensure that the full path to the output file exists
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
-        # DEBUG
-        #run_strip_and_convert(input_path, output_path)
+            # DEBUG
+            #run_strip_and_convert(input_path, output_path)
 
-        pool.apply_async(run_strip_and_convert, (input_path, output_path))
+            pool.apply_async(run_strip_and_convert, (input_path, output_path))
 
     pool.close()
     pool.join()
