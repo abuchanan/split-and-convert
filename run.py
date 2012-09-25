@@ -1,4 +1,8 @@
-from glob import glob
+from __future__ import print_function
+
+import argparse
+import itertools
+import gzip
 import logging
 import multiprocessing
 import os
@@ -9,35 +13,55 @@ import time
 log = multiprocessing.log_to_stderr()
 log.setLevel(logging.INFO)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('fastq', nargs='+')
+
+
+def grouper(n, iterable, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx
+    args = [iter(iterable)] * n
+    return itertools.izip_longest(fillvalue=fillvalue, *args)
 
 def run_strip_and_convert(input_path, output_path):
 
-    cmd = 'strip-and-convert {0} | gzip > {1}'.format(input_path, output_path)
-    try:
-        subprocess.check_output(cmd, shell=True)
-        log.info('Completed: {0} > {1}'.format(input_path, output_path))
-    except subprocess.CalledProcessError, e:
-        log.error('Error: {0}'.format(e.output))
+    input = gzip.open(input_path)
+    output = gzip.open(output_path, 'wb')
+
+    for header, seq, strand, quality in grouper(4, input):
+        header = header.strip()
+        seq = seq.strip()
+        header = '>' + header[1:]
+        seq = seq[10:]
+        print(header, seq, sep='\n', file=output)
+
+    input.close()
+    output.close()
+
+    log.info('Completed: {0} > {1}'.format(input_path, output_path))
 
 
 if __name__ == '__main__':
-    pool = multiprocessing.Pool(processes=7)
+    args = parser.parse_args()
 
-    for file_path in glob('../original/**/*.fastq.gz'):
-        # build an output file path using the input file path
-        # e.g.
-        #  ../original/sample_name/read_file
-        #  becomes 
-        #  ./sample_name/read_file
-        dir_path, file_name = os.path.split(file_path)
-        _, dir_name = os.path.split(dir_path)
-        output_path = os.path.join(dir_name, file_name)
+    num_processes = min(7, len(args.fastq))
+    pool = multiprocessing.Pool(processes=num_processes)
+
+    for input_path in args.fastq:
+
+        dir_path, file_name = os.path.split(input_path)
+        file_name = file_name.replace('fastq', 'fasta')
+        output_path = os.path.join(dir_path, 'stripped-and-converted', file_name)
+        output_dir = os.path.dirname(output_path)
 
         # ensure that the full path to the output file exists
-        if not os.path.exists(dir_name):
-            os.makedirs(dir_name)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-        pool.apply_async(run_strip_and_convert, (file_path, output_path))
+        # DEBUG
+        #run_strip_and_convert(input_path, output_path)
+
+        pool.apply_async(run_strip_and_convert, (input_path, output_path))
 
     pool.close()
     pool.join()
